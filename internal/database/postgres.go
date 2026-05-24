@@ -139,3 +139,25 @@ func (r *PostgresRepo) IncrementRetry(ctx context.Context, id string, errMsg str
 	}
 	return currentRetry, maxRetries, nil
 }
+
+// MarkJobRunning sets the state to RUNNING and stamps the initial locked_at lease time
+func (r *PostgresRepo) MarkJobRunning(ctx context.Context, id string) error {
+	query := `
+		UPDATE jobs
+		SET status = 'RUNNING', locked_at = NOW(), updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+// UpdateJobLease ticks the locked_at timestamp to keep the lease active mid-execution
+func (r *PostgresRepo) UpdateJobLease(ctx context.Context, id string) error {
+	query := `
+		UPDATE jobs
+		SET locked_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
