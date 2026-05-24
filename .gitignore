@@ -1,0 +1,23 @@
+# Local Compiled Binaries
+dist/
+bin/
+orchestrator
+worker
+
+# Architecture Tooling & Package Dependencies
+vendor/
+go.work
+
+# Operating System Metadata
+.DS_Store
+Thumbs.db
+
+# IDE Configuration Indexes
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Runtime Environment Secret Variables
+*.env
+*.env.local
