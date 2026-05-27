@@ -21,3 +21,11 @@ Thumbs.db
 # Runtime Environment Secret Variables
 *.env
 *.env.local
+
+# Terraform Runtime State Outputs & Locks
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
