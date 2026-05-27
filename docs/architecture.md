@@ -33,3 +33,36 @@ The orchestration engine leverages decoupled state, synchronization, and event d
      │   RETRY     │ ──► Calculated via Backoff formula ($2^{retry} \times 1000\text{ms}$)
      └─────────────┘
        └── Threshold exceeded ──► [STATUS: DEAD] (Routed directly to jobs.dlq buffer)
+
+# Architectural Specification & Topology Blueprint
+
+This document details the layout, data validation patterns, and communication boundaries of the Distributed Job Orchestrator system.
+
+## System Topology Block
+
+```mermaid
+graph TD
+    Client[Client Browser / Trigger] -->|HTTP POST /jobs| API[Ingestion API Gateway]
+
+    subgraph Storage & Verification Layer
+        API -->|1. Transact State| Postgres[(PostgreSQL DB)]
+    end
+
+    subgraph Messaging Core Backbone
+        API -->|2. Dispatch Task Packet| Rabbit[RabbitMQ Exchange]
+    end
+
+    subgraph Consumer Compute Fleet
+        Rabbit -->|Durable Push| W1[Worker Instance Node 01]
+        Rabbit -->|Durable Push| W2[Worker Instance Node 02]
+    end
+
+    subgraph Distributed Mutual Exclusion
+        W1 <-->|SETNX Lease Lock| Redis[(Redis Cluster)]
+        W2 <-->|SETNX Lease Lock| Redis
+    end
+
+    style Client fill:#f9f,stroke:#333,stroke-width:2px
+    style Postgres fill:#3498db,stroke:#333,stroke-width:2px,color:#fff
+    style Rabbit fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
+    style Redis fill:#e74c3c,stroke:#333,stroke-width:2px,color:#fff
