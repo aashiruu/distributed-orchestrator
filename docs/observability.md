@@ -2,7 +2,7 @@
 
 This document profiles the scrape layouts, data collection paths, and monitoring queries used to evaluate the platform's performance under load.
 
-## 📡 Prometheus Core Scrape Topologies
+## Prometheus Core Scrape Topologies
 
 Prometheus operates natively inside the container isolation zone, leveraging internal Docker DNS records to target system endpoints without exposing metrics to the public internet:
 
@@ -11,7 +11,8 @@ Prometheus operates natively inside the container isolation zone, leveraging int
 | Ingestion API Gateway | `http://orchestrator:8080` | `/metrics` | `2s` |
 | Worker Processing Pool | `http://worker:8081` | `/metrics` | `2s` |
 
-## 📊 Live Production Metric Catalog
+##
+Live Production Metric Catalog
 
 ### 1. Ingestion Gateway Performance
 * **Metric Identifier:** `orchestrator_jobs_ingested_total`
