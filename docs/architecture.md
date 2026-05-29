@@ -15,54 +15,48 @@ The orchestration engine leverages decoupled state, synchronization, and event d
 
 ```text
   [Inbound Client POST]
-            │
-            ▼
-     ┌─────────────┐
-     │   PENDING   │ ──► Saved to DB, Enqueued to AMQP protocol wire
-     └─────────────┘
-            │
-            ▼ (Acquired by worker instance node, Mutex lock claimed)
-     ┌─────────────┐
-     │   RUNNING   │ ──► Heartbeat lease initialized (updated_at tracking)
-     └─────────────┘
-       ├── Extinction / Success  ──► [STATUS: SUCCESS] (Ack dispatched)
-       └── Fatal Crash scenario ──► [STATUS: PENDING] (Lease expires -> Fencing Takeover)
-            │
-            ▼ (Execution exception caught)
-     ┌─────────────┐
-     │   RETRY     │ ──► Calculated via Backoff formula ($2^{retry} \times 1000\text{ms}$)
-     └─────────────┘
-       └── Threshold exceeded ──► [STATUS: DEAD] (Routed directly to jobs.dlq buffer)
-
-# Architectural Specification & Topology Blueprint
-
-This document details the layout, data validation patterns, and communication boundaries of the Distributed Job Orchestrator system.
-
+             │
+             ▼
+      ┌─────────────┐
+      │   PENDING   │ ──► Saved to DB, Enqueued to AMQP protocol wire
+      └─────────────┘
+             │
+             ▼ (Acquired by worker instance node, Mutex lock claimed)
+      ┌─────────────┐
+      │   RUNNING   │ ──► Heartbeat lease initialized (updated_at tracking)
+      └─────────────┘
+        ├── Extinction / Success  ──► [STATUS: SUCCESS] (Ack dispatched)
+        └── Fatal Crash scenario ──► [STATUS: PENDING] (Lease expires -> Fencing Takeover)
+             │
+             ▼ (Execution exception caught)
+      ┌─────────────┐
+      │   RETRY     │ ──► Calculated via Backoff formula ($2^{retry} \times 1000\text{ms}$)
+      └─────────────┘
+        └── Threshold exceeded ──► [STATUS: DEAD] (Routed directly to jobs.dlq buffer)
+```
 ## System Topology Block
 
 ```mermaid
 graph TD
-    Client[Client Browser / Trigger] -->|HTTP POST /jobs| API[Ingestion API Gateway]
+    %% Client & Core Ingestion
+    Client[Client Chaos Load] -->|HTTP POST /jobs| API[orchestrator-gateway]
+    API -->|1. ACID Write| DB[(PostgreSQL: db)]
+    API -->|2. Persistent Event| MQ[RabbitMQ Broker: rabbitmq]
 
-    subgraph Storage & Verification Layer
-        API -->|1. Transact State| Postgres[(PostgreSQL DB)]
-    end
+    %% Worker Processing Core
+    MQ -->|Manual Ack Stream| Worker[worker-nodes-pool]
+    Worker <-->|3. Atomic Mutex Lease| Redis[(Redis Lock Sync: redis)]
+    Worker -->|4. Update Audit State| DB
 
-    subgraph Messaging Core Backbone
-        API -->|2. Dispatch Task Packet| Rabbit[RabbitMQ Exchange]
-    end
+    %% Observability Mesh Overlay
+    Prom[Prometheus Scraper] -.->|Scrapes Container DNS :8080| API
+    Prom -.->|Scrapes Container DNS :8081| Worker
+    Graf[Grafana Dashboard UI] ===>|Aggregates Live Metrics| Prom
 
-    subgraph Consumer Compute Fleet
-        Rabbit -->|Durable Push| W1[Worker Instance Node 01]
-        Rabbit -->|Durable Push| W2[Worker Instance Node 02]
-    end
-
-    subgraph Distributed Mutual Exclusion
-        W1 <-->|SETNX Lease Lock| Redis[(Redis Cluster)]
-        W2 <-->|SETNX Lease Lock| Redis
-    end
-
+    %% Style Mappings
     style Client fill:#f9f,stroke:#333,stroke-width:2px
-    style Postgres fill:#3498db,stroke:#333,stroke-width:2px,color:#fff
-    style Rabbit fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
-    style Redis fill:#e74c3c,stroke:#333,stroke-width:2px,color:#fff
+    style API fill:#bbf,stroke:#333,stroke-width:2px
+    style Worker fill:#bbf,stroke:#333,stroke-width:2px
+    style Prom fill:#ff9,stroke:#333,stroke-width:2px
+    style Graf fill:#f96,stroke:#333,stroke-width:2px
+```

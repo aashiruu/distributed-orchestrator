@@ -4,8 +4,8 @@
 
 ### 1. High Ingestion Volumetrics vs. Low Processing Latency
 If your API counter metrics increase dramatically while worker completion rates stall, your consumers are saturated:
-* **Query KPI:** `orchestrator_jobs_ingested_total` increases exponentially while `worker_job_execution_duration_seconds_count` stays flat.
-* **Mitigation Strategy:** Scale out your computing resource pool by spinning up additional isolated worker node binary processes (`cmd/worker/main.go`).
+* **Query KPI:** `orchestrator_jobs_ingested_total` increases exponentially while `rate(orchestrator_jobs_ingested_total{job_name="video.transcode"}[1m])` stays flat.
+* **Mitigation Strategy:** Scale up processing capabilities smoothly inside your network mesh (`docker compose up -d --scale worker=3`).
 
 ### 2. High Lock Failure Metrics
 If your Redis metric logs report high collision numbers, multiple workers are competing for the exact same message deliveries:
