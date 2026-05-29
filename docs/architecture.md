@@ -33,7 +33,7 @@ The orchestration engine leverages decoupled state, synchronization, and event d
      │   RETRY     │ ──► Calculated via Backoff formula ($2^{retry} \times 1000\text{ms}$)
      └─────────────┘
        └── Threshold exceeded ──► [STATUS: DEAD] (Routed directly to jobs.dlq buffer)
-
+```
 # Architectural Specification & Topology Blueprint
 
 This document details the layout, data validation patterns, and communication boundaries of the Distributed Job Orchestrator system.
@@ -66,3 +66,4 @@ graph TD
     style Postgres fill:#3498db,stroke:#333,stroke-width:2px,color:#fff
     style Rabbit fill:#e67e22,stroke:#333,stroke-width:2px,color:#fff
     style Redis fill:#e74c3c,stroke:#333,stroke-width:2px,color:#fff
+```
