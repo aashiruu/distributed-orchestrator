@@ -33,7 +33,7 @@ The orchestration engine leverages decoupled state, synchronization, and event d
       │   RETRY     │ ──► Calculated via Backoff formula ($2^{retry} \times 1000\text{ms}$)
       └─────────────┘
         └── Threshold exceeded ──► [STATUS: DEAD] (Routed directly to jobs.dlq buffer)
-```
+
 ## System Topology Block
 
 ```mermaid
