@@ -1,6 +1,8 @@
 package config
 
-import "os"
+import (
+	"os"
+)
 
 type Config struct {
 	DBURL    string
@@ -10,17 +12,30 @@ type Config struct {
 }
 
 func Load() *Config {
-	return &Config{
-		DBURL:    getEnv("DATABASE_URL", "postgres://orchestrator_user:orchestrator_password@localhost:5432/job_orchestrator?sslmode=disable"),
-		AMQPURL:  getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		RedisURL: getEnv("REDIS_URL", "localhost:6379"),
-		APIPort:  getEnv("API_PORT", "8080"),
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		dbURL = "postgres://orchestrator_user:orchestrator_password@localhost:5432/job_orchestrator?sslmode=disable"
 	}
-}
 
-func getEnv(key, fallback string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
+	amqpURL := os.Getenv("AMQP_URL")
+	if amqpURL == "" {
+		amqpURL = "amqp://guest:guest@localhost:5672/"
 	}
-	return fallback
+
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379/0"
+	}
+
+	apiPort := os.Getenv("API_PORT")
+	if apiPort == "" {
+		apiPort = "8080"
+	}
+
+	return &Config{
+		DBURL:    dbURL,
+		AMQPURL:  amqpURL,
+		RedisURL: redisURL,
+		APIPort:  apiPort,
+	}
 }

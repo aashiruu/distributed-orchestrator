@@ -12,16 +12,14 @@ import (
 )
 
 const (
-	TargetURL = "http://localhost:8080/jobs"
-	WorkerPoolSize = 10 // Concurrent request pipelines
+	TargetURL      = "http://localhost:8080/jobs"
+	WorkerPoolSize = 10
 )
 
 func main() {
-	log.Println("🚨 CHAOS HARNESS RUNNING: Injecting heavy transactional load...")
+	log.Println("CHAOS HARNESS RUNNING: Injecting heavy transactional load...")
 
 	var wg sync.WaitGroup
-
-	// Seed random generator for varying execution profiles
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for i := 1; i <= WorkerPoolSize; i++ {
@@ -29,10 +27,8 @@ func main() {
 		go func(workerID int) {
 			defer wg.Done()
 
-			// Each pipeline worker dispatches 5 intensive task sequences
 			for j := 1; j <= 5; j++ {
 				jobName := "video.transcode"
-				// Randomly inject the fail target to trigger Phase 4 DLQ/Backoff routing
 				if r.Float32() < 0.3 {
 					jobName = "fail.me"
 				}
@@ -61,12 +57,11 @@ func main() {
 				log.Printf("[WORKER %d] Dispatched task target: %s -> Response HTTP Code %d. Track ID: %v",
 					workerID, jobName, resp.StatusCode, respMap["job_id"])
 
-				// Throttling step to vary processing windows
-				time.Sleep(time.Duration(r.Intn(500)) * time.Millisecond)
+				time.Sleep(time.Duration(1500+r.Intn(2000)) * time.Millisecond)
 			}
 		}(i)
 	}
 
 	wg.Wait()
-	log.Println("🏁 CHAOS SEED COMPLETE: All concurrent traffic payloads injected.")
+	log.Println("CHAOS SEED COMPLETE: All concurrent traffic payloads injected.")
 }

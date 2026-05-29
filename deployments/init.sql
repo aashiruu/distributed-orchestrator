@@ -1,4 +1,4 @@
--- Ensure enum type is created for type-safe status transitions
+-- Ensure enum type is created cleanly for type-safe status transitions
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'job_status') THEN
@@ -6,11 +6,12 @@ BEGIN
     END IF;
 END $$;
 
+-- Complete production tracking table matching Go code structures exactly
 CREATE TABLE IF NOT EXISTS jobs (
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     payload JSONB NOT NULL,
-    status job_status NOT NULL DEFAULT 'PENDING',
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
     retry_count INT NOT NULL DEFAULT 0,
     max_retries INT NOT NULL DEFAULT 3,
     error_log TEXT,
@@ -19,6 +20,6 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- Index critical state columns to keep query scanning complexity at O(1) or O(log N)
+-- Index critical state columns to keep query scanning complexity low
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at);

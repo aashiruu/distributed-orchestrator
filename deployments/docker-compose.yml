@@ -1,9 +1,6 @@
-version: '3.8'
-
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
-    container_name: orchestrator_db
     environment:
       POSTGRES_USER: orchestrator_user
       POSTGRES_PASSWORD: orchestrator_password
@@ -15,36 +12,90 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U orchestrator_user -d job_orchestrator"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: orchestrator_queue
+    image: rabbitmq:3-management-alpine
     ports:
-      - "5672:5672"   # AMQP protocol wire port
-      - "15672:15672" # Management UI dashboard
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      - RABBITMQ_NODENAME=rabbit@localhost
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 6
 
   redis:
-    image: redis:7.2-alpine
-    container_name: orchestrator_cache
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Ingestion Gateway Node
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: cmd/orchestrator/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_URL=postgres://orchestrator_user:orchestrator_password@db:5432/job_orchestrator?sslmode=disable
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://redis:6379/0
+      - API_PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Resilient Worker Node
+  worker:
+    build:
+      context: ..
+      dockerfile: cmd/worker/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - DB_URL=postgres://orchestrator_user:orchestrator_password@db:5432/job_orchestrator?sslmode=disable
+      - AMQP_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Prometheus Scraper Engine
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - orchestrator
+      - worker
+
+  # Grafana Live Dashboard UI
+  grafana:
+    image: grafana/grafana:10.2.0
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
 
 volumes:
   pgdata:
